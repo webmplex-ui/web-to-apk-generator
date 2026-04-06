@@ -8,6 +8,10 @@ on:
         description: 'Package Name'
       site_url:
         description: 'Site URL'
+      v_name:
+        description: 'Version Name'
+      v_code:
+        description: 'Version Code'
       admob_id:
         description: 'AdMob App ID'
       banner_id:
@@ -31,7 +35,23 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # এখানে আপনার জাভা কোডে আইডিগুলো ইনজেক্ট করার লজিক থাকবে (যদি আপনার কোড সেভাবে সেট করা থাকে)
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # ইনপুট করা ডেটাগুলো প্রোজেক্টের ভেতরে সেট করা (Injecting Inputs)
+      - name: Inject Configuration
+        run: |
+          echo "Injecting values into Gradle/Java..."
+          # আপনি যদি BuildConfig ব্যবহার করেন তবে এখানে সেটিংস সেট করতে পারেন
+          # উদাহরণস্বরূপ local.properties এ ভ্যালু রাখা:
+          echo "app_name=${{ github.event.inputs.app_name }}" >> local.properties
+          echo "site_url=${{ github.event.inputs.site_url }}" >> local.properties
+          echo "v_name=${{ github.event.inputs.v_name }}" >> local.properties
+          echo "v_code=${{ github.event.inputs.v_code }}" >> local.properties
+          echo "admob_id=${{ github.event.inputs.admob_id }}" >> local.properties
+          echo "banner_id=${{ github.event.inputs.banner_id }}" >> local.properties
+          echo "interstitial_id=${{ github.event.inputs.interstitial_id }}" >> local.properties
+
       - name: Build with Gradle
         run: ./gradlew assembleDebug
 
@@ -40,6 +60,13 @@ jobs:
         if: success()
         with:
           tag_name: "v${{ github.run_number }}"
+          name: "Release v${{ github.event.inputs.v_name }} (Build ${{ github.run_number }})"
+          body: |
+            🎉 **APK Generated Successfully!**
+            📱 **App Name:** ${{ github.event.inputs.app_name }}
+            📦 **Package:** ${{ github.event.inputs.package_name }}
+            🔢 **Version:** ${{ github.event.inputs.v_name }} (Code: ${{ github.event.inputs.v_code }})
+            🌐 **URL:** ${{ github.event.inputs.site_url }}
           files: app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
