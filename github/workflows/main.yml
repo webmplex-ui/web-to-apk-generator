@@ -23,7 +23,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # এটি রিলিজ তৈরির জন্য বাধ্যতামূলক
+      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -38,35 +38,22 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Inject Configuration
-        run: |
-          echo "Injecting values..."
-          echo "app_name=${{ github.event.inputs.app_name }}" >> local.properties
-          echo "site_url=${{ github.event.inputs.site_url }}" >> local.properties
-          echo "v_name=${{ github.event.inputs.v_name }}" >> local.properties
-          echo "v_code=${{ github.event.inputs.v_code }}" >> local.properties
-          echo "admob_id=${{ github.event.inputs.admob_id }}" >> local.properties
-          echo "banner_id=${{ github.event.inputs.banner_id }}" >> local.properties
-          echo "interstitial_id=${{ github.event.inputs.interstitial_id }}" >> local.properties
-
       - name: Build with Gradle
         run: ./gradlew assembleDebug
 
-      # এই স্টেপটি চেক করবে APK ফাইলটি আসলেই তৈরি হয়েছে কি না
-      - name: Verify APK Path
-        run: ls -R app/build/outputs/apk/
+      # খুব জরুরি: এখানে আমরা APK ফাইলটি খুঁজে বের করব এবং একটি ফোল্ডারে রাখব
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-apk
+          path: app/build/outputs/apk/debug/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: success()
         with:
-          tag_name: "v${{ github.run_number }}-${{ github.event.inputs.v_name }}"
-          name: "Build #${{ github.run_number }} - v${{ github.event.inputs.v_name }}"
-          body: |
-            🎉 **APK Generated Successfully!**
-            📱 **App Name:** ${{ github.event.inputs.app_name }}
-            📦 **Version:** ${{ github.event.inputs.v_name }} (Code: ${{ github.event.inputs.v_code }})
-          files: |
-             app/build/outputs/apk/debug/*.apk
+          tag_name: "v${{ github.run_number }}"
+          name: "Release v${{ github.event.inputs.v_name || '1.0' }}"
+          files: app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
