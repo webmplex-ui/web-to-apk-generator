@@ -23,7 +23,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # এটি রিলিজ তৈরির জন্য বাধ্যতামূলক
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -38,12 +38,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ইনপুট করা ডেটাগুলো প্রোজেক্টের ভেতরে সেট করা (Injecting Inputs)
       - name: Inject Configuration
         run: |
-          echo "Injecting values into Gradle/Java..."
-          # আপনি যদি BuildConfig ব্যবহার করেন তবে এখানে সেটিংস সেট করতে পারেন
-          # উদাহরণস্বরূপ local.properties এ ভ্যালু রাখা:
+          echo "Injecting values..."
           echo "app_name=${{ github.event.inputs.app_name }}" >> local.properties
           echo "site_url=${{ github.event.inputs.site_url }}" >> local.properties
           echo "v_name=${{ github.event.inputs.v_name }}" >> local.properties
@@ -55,18 +52,21 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleDebug
 
+      # এই স্টেপটি চেক করবে APK ফাইলটি আসলেই তৈরি হয়েছে কি না
+      - name: Verify APK Path
+        run: ls -R app/build/outputs/apk/
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: success()
         with:
-          tag_name: "v${{ github.run_number }}"
-          name: "Release v${{ github.event.inputs.v_name }} (Build ${{ github.run_number }})"
+          tag_name: "v${{ github.run_number }}-${{ github.event.inputs.v_name }}"
+          name: "Build #${{ github.run_number }} - v${{ github.event.inputs.v_name }}"
           body: |
             🎉 **APK Generated Successfully!**
             📱 **App Name:** ${{ github.event.inputs.app_name }}
-            📦 **Package:** ${{ github.event.inputs.package_name }}
-            🔢 **Version:** ${{ github.event.inputs.v_name }} (Code: ${{ github.event.inputs.v_code }})
-            🌐 **URL:** ${{ github.event.inputs.site_url }}
-          files: app/build/outputs/apk/debug/*.apk
+            📦 **Version:** ${{ github.event.inputs.v_name }} (Code: ${{ github.event.inputs.v_code }})
+          files: |
+             app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
